@@ -73,8 +73,8 @@ pip install -r requirements.txt
 Download the correct Microsoft Edge WebDriver:
 https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/
 ```
-
-Place the msedgedriver.exe file into: Drivers
+Create Folder Named drivers
+Place the msedgedriver.exe file into drivers
 
 ArtDownloader/drivers/
 ▶ Usage
