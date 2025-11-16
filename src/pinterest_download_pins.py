@@ -1,193 +1,277 @@
 import os
 import re
 import time
-import requests
-from typing import Set
+from typing import Set, List
 
+import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.common.exceptions import StaleElementReferenceException
 
 
-# ===== НАСТРОЙКИ =====
+# ===================== НАСТРОЙКИ =====================
 
-# СЮДА вставь ссылку на страницу с ТВОИМИ пинами
-# пример: "https://www.pinterest.de/твой_ник/_saved/"
-START_URL = "https://www.pinterest.com/YOUR_USERNAME/_saved/"
+# Путь к msedgedriver.exe
+EDGE_DRIVER_PATH = r"drivers\edgedriver_win64\msedgedriver.exe"
 
-# сколько раз скроллить страницу (увеличь если пинов много)
-MAX_SCROLLS = 80
+# Папка для скачивания картинок
+DOWNLOAD_DIR = r"downloads\pinterest_fast"
 
-# пауза между скроллами (секунд)
-SCROLL_PAUSE = 2.0
+# Сколько максимум шагов скролла делать
+# Для больших бордов (5k+) можно ставить 300–400
+MAX_SCROLLS = 300
 
-# куда сохранять картинки
-DOWNLOAD_DIR = r"D:\Projekts\Script\Downloader\downloads\pinterest"
+# Пауза между скроллами (даём времени Pinterest подгрузить контент)
+SCROLL_PAUSE = 1.8
 
-# ПОЛНЫЙ путь до msedgedriver.exe
-EDGE_DRIVER_PATH = r"D:\Projekts\Script\Downloader\drivers\edgedriver_win64\msedgedriver.exe"
+# Сколько раз подряд можно НЕ находить новые картинки, чтобы остановиться
+STABLE_ROUNDS = 10
 
+# Таймаут HTTP-запросов
+REQUEST_TIMEOUT = 25
 
-# ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
+# Мусор по ключевым словам (оставляем, но БЕЗ фильтра по размеру)
+TRASH_KEYWORDS = [
+    "avatars", "profile_images", "favicon", "logo", "static"
+]
+
+# =====================================================
+
 
 def ensure_dir(path: str) -> None:
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
+    os.makedirs(path, exist_ok=True)
+
+
+def is_trash_image(url: str) -> bool:
+    """
+    Фильтруем только очевидный мусор.
+    Фильтр по размерам отключили, чтобы не терять нормальные пины.
+    """
+    if any(k in url for k in TRASH_KEYWORDS):
+        return True
+    return False
 
 
 def make_original_url(url: str) -> str:
     """
-    Меняем /236x/, /474x/, /736x/ и т.п. на /originals/
+    Превью вида ../236x/../474x/../736x/ → пробуем заменить на /originals/
     """
     return re.sub(r"/\d+x/", "/originals/", url, count=1)
 
 
-def collect_image_urls(driver: webdriver.Edge,
+def collect_image_urls(driver,
                        max_scrolls: int,
-                       pause: float) -> Set[str]:
+                       pause: float,
+                       stable_rounds: int) -> List[str]:
     """
-    Скроллит страницу и собирает все уникальные ссылки на картинки с pinimg.com.
-    Обрабатывает StaleElementReferenceException.
+    Скроллит ТЕКУЩУЮ страницу (board, saved, home feed)
+    и собирает все уникальные pinimg.com URL'ы.
+    Останавливается, когда несколько итераций подряд не появляется новых URL.
     """
     urls: Set[str] = set()
-    last_height = driver.execute_script("return document.body.scrollHeight")
+    stable = 0
 
     for i in range(max_scrolls):
         print(f"[SCROLL] {i + 1}/{max_scrolls}")
 
-        # скролл в самый низ
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(pause)
+        # 1) Собираем картинки на текущем экране
+        before = len(urls)
 
-        # собираем все <img> на текущем состоянии DOM
-        imgs = driver.find_elements(By.TAG_NAME, "img")
+        try:
+            imgs = driver.find_elements(By.TAG_NAME, "img")
+        except Exception:
+            imgs = []
+
         for img in imgs:
             try:
                 src = img.get_attribute("src") or ""
                 srcset = img.get_attribute("srcset") or ""
             except StaleElementReferenceException:
-                # элемент уже не существует в DOM (после подгрузки) — просто пропускаем
                 continue
 
             candidate = None
 
-            # если есть srcset — берём из него самую крупную картинку
+            # Если есть srcset → берём самый большой вариант
             if "pinimg.com" in srcset:
                 parts = [p.strip().split(" ")[0] for p in srcset.split(",")]
                 big_parts = [p for p in parts if "pinimg.com" in p]
                 if big_parts:
-                    candidate = big_parts[-1]  # как правило, последняя — самая большая
+                    candidate = big_parts[-1]
 
-            # иначе просто src
+            # Если нет srcset, но есть обычный src
             if not candidate and "pinimg.com" in src:
                 candidate = src
 
-            if candidate and "pinimg.com" in candidate:
-                urls.add(candidate)
+            if not candidate:
+                continue
+            if is_trash_image(candidate):
+                continue
 
-        # проверяем, не перестала ли страница расти (конец)
+            urls.add(candidate)
+
+        after = len(urls)
+        diff = after - before
+        print(f"   Картинок собрано: {after} (+{diff})")
+
+        # 2) Проверяем, есть ли прогресс
+        if diff == 0:
+            stable += 1
+            print(f"   Нет новых URL (stable {stable}/{stable_rounds})")
+            if stable >= stable_rounds:
+                print("   Похоже, контент перестал подгружаться — выходим из скролла.")
+                break
+        else:
+            stable = 0
+
+        # 3) Плавный скролл вниз — не сразу в самый низ, а примерно на экран
+        driver.execute_script("window.scrollBy(0, window.innerHeight * 0.8);")
+        time.sleep(pause)
+
+    # Финальный проход на всякий случай (если что-то догрузилось в самом конце)
+    print("Делаю финальный проход по странице...")
+    try:
+        imgs = driver.find_elements(By.TAG_NAME, "img")
+    except Exception:
+        imgs = []
+
+    before_final = len(urls)
+    for img in imgs:
         try:
-            new_height = driver.execute_script("return document.body.scrollHeight")
-        except Exception:
-            # если вдруг сессия отвалилась/вкладка закрыта
-            break
+            src = img.get_attribute("src") or ""
+            srcset = img.get_attribute("srcset") or ""
+        except StaleElementReferenceException:
+            continue
 
-        if new_height == last_height:
-            print("Достигнут конец страницы (высота не меняется).")
-            break
-        last_height = new_height
+        candidate = None
+        if "pinimg.com" in srcset:
+            parts = [p.strip().split(" ")[0] for p in srcset.split(",")]
+            big_parts = [p for p in parts if "pinimg.com" in p]
+            if big_parts:
+                candidate = big_parts[-1]
+        if not candidate and "pinimg.com" in src:
+            candidate = src
+        if not candidate:
+            continue
+        if is_trash_image(candidate):
+            continue
+        urls.add(candidate)
 
-    return urls
+    after_final = len(urls)
+    print(f"   Финальный проход добавил: {after_final - before_final} URL")
+
+    return sorted(urls)
 
 
-def download_image(url: str, folder: str, idx: int) -> bool:
+def download_image(url: str, out_dir: str, index: int) -> bool:
     """
-    Скачивает картинку по URL в указанную папку.
-    Имя файла: pin_<номер>.(jpg/png/webp)
+    Скачивает одну картинку.
+    1) пробует /originals/
+    2) если не вышло — качает исходный URL
     """
+    ensure_dir(out_dir)
+
     orig_url = make_original_url(url)
 
     for attempt, u in enumerate([orig_url, url], start=1):
         try:
-            r = requests.get(u, timeout=20)
+            r = requests.get(u, timeout=REQUEST_TIMEOUT, stream=True)
             r.raise_for_status()
 
-            # определяем расширение по Content-Type
+            ctype = r.headers.get("Content-Type", "").lower()
             ext = ".jpg"
-            ct = r.headers.get("Content-Type", "").lower()
-            if "png" in ct:
+            if "png" in ctype:
                 ext = ".png"
-            elif "webp" in ct:
+            elif "webp" in ctype:
                 ext = ".webp"
 
-            filename = os.path.join(folder, f"pin_{idx}{ext}")
-            with open(filename, "wb") as f:
-                f.write(r.content)
+            fname = f"pinterest_{index:05d}{ext}"
+            path = os.path.join(out_dir, fname)
 
-            print(f"[OK] {filename} ({'original' if attempt == 1 else 'fallback'})")
+            if os.path.exists(path):
+                print(f"[skip] {fname} уже есть")
+                return True
+
+            tmp = path + ".part"
+            with open(tmp, "wb") as f:
+                for chunk in r.iter_content(1024 * 32):
+                    if chunk:
+                        f.write(chunk)
+            os.replace(tmp, path)
+            print(f"[OK] {fname} ({'original' if attempt == 1 else 'fallback'})")
             return True
+
         except Exception as e:
             print(f"[ERR] попытка {attempt} для {u}: {e}")
 
     return False
 
 
-# ===== ОСНОВНАЯ ЛОГИКА =====
-
 def main():
-    if "DEIN_USERNAME" in START_URL:
-        print("❌ Пожалуйста, вставь реальный URL в переменную START_URL.")
-        return
-
-    # проверяем, что именно ФАЙЛ, а не папка
-    if not os.path.isfile(EDGE_DRIVER_PATH):
-        print(f"❌ EDGE_DRIVER_PATH указывает не на файл.")
-        print(f"Текущее значение: {EDGE_DRIVER_PATH}")
-        print("Укажи полный путь до msedgedriver.exe, например:")
-        print(r'EDGE_DRIVER_PATH = r"D:\Projekts\Script\Downloader\drivers\edgedriver_win64\msedgedriver.exe"')
-        return
-
     ensure_dir(DOWNLOAD_DIR)
 
-    print("Запускаю браузер Edge через Selenium...")
+    if not os.path.isfile(EDGE_DRIVER_PATH):
+        print("❌ Не найден msedgedriver.exe по пути:")
+        print("   ", EDGE_DRIVER_PATH)
+        print("Убедись, что драйвер лежит в drivers\\edgedriver_win64")
+        return
+
+    print("=== Pinterest Fast Downloader (board / home feed) ===\n")
+
+    print("Запускаю браузер Edge через Selenium (новое окно, чистый профиль)...")
     edge_options = webdriver.EdgeOptions()
-    # если хочешь без окна, можно раскомментировать:
+    edge_options.add_argument("--start-maximized")
+    # Если хочешь в фоне — можно включить headless:
     # edge_options.add_argument("--headless=new")
 
     service = EdgeService(executable_path=EDGE_DRIVER_PATH)
     driver = webdriver.Edge(service=service, options=edge_options)
 
     try:
-        print("Открываю Pinterest...")
-        driver.get(START_URL)
+        print("Открываю https://www.pinterest.com/ ...")
+        driver.get("https://www.pinterest.com/")
+        time.sleep(3)
 
-        print("\n🔑 Залогинься в Pinterest (если ещё не залогинен).")
-        print("Убедись, что открыт экран с твоими сохранёнными пинами или нужной доской.")
-        input("Когда будешь на нужной странице и всё загрузится — нажми Enter в этой консоли...\n")
+        print("\n🔑 Дальше:")
+        print("  1) В окне Edge залогинься в свой Pinterest (если нужно).")
+        print("  2) Открой ЛЮБУЮ страницу, с которой хочешь качать:")
+        print("     - конкретный board (tactical и т.п.)")
+        print("     - вкладку Saved (все сохранённые)")
+        print("     - даже home feed — он тоже будет считаться.")
+        print("  3) Пролистай чуть вниз, чтобы убедиться, что всё грузится.")
+        input("  4) Когда будешь на нужной странице — вернись сюда и нажми Enter...\n")
 
-        print("Начинаю скроллить и собирать ссылки на картинки...")
-        urls = collect_image_urls(driver, MAX_SCROLLS, SCROLL_PAUSE)
-        print(f"\nНайдено уникальных URL картинок: {len(urls)}")
+        print("Начинаю скроллить и собирать URL картинок...")
+        urls = collect_image_urls(
+            driver,
+            MAX_SCROLLS,
+            SCROLL_PAUSE,
+            STABLE_ROUNDS
+        )
+
+        print(f"\nНайдено уникальных картинок (pinimg.com): {len(urls)}")
+
+        if not urls:
+            print("❌ Не нашёл ни одной картинки. Скорее всего, Pinterest ещё не подгрузил контент или открыт не тот экран.")
+            return
+
+        print("\nНачинаю скачивание...")
+        total_ok = 0
+        for idx, u in enumerate(urls, 1):
+            ok = download_image(u, DOWNLOAD_DIR, idx)
+            if ok:
+                total_ok += 1
+
+        print("\n==== Готово ====")
+        print(f"Всего URL:           {len(urls)}")
+        print(f"Файлов скачано:      {total_ok}")
+        print("Папка с результатом:", os.path.abspath(DOWNLOAD_DIR))
 
     finally:
-        driver.quit()
-
-    if not urls:
-        print("❌ Не удалось найти ни одной картинки. Возможно, другая разметка страницы.")
-        return
-
-    print("\nНачинаю скачивание...")
-    count = 0
-    for i, url in enumerate(sorted(urls)):
-        ok = download_image(url, DOWNLOAD_DIR, i + 1)
-        if ok:
-            count += 1
-
-    print("\nГотово.")
-    print(f"Всего URL: {len(urls)}")
-    print(f"Успешно скачано: {count}")
-    print("Папка:", os.path.abspath(DOWNLOAD_DIR))
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
