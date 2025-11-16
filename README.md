@@ -61,28 +61,31 @@ yaml
 
 1. Clone the repository:
 
-
+```console
 git clone https://github.com/<your-name>/ArtDownloader.git
 cd ArtDownloader
-Install dependencies:
-bash
+```console
 
+Install dependencies in venv
+
+```console
 pip install -r requirements.txt
 Download the correct Microsoft Edge WebDriver:
 https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/
-bash
-Place the msedgedriver.exe file into: Drivers
+```
 
+Place the msedgedriver.exe file into: Drivers
 
 ArtDownloader/drivers/
 ▶ Usage
 Pinterest Scraper
 Open the script:
-bash
 
+```console
 python src/pinterest_download_pins.py
 Login to Pinterest manually
-bash
+```
+
 Navigate to your Saved page or any board
 
 Press ENTER in the console
