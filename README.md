@@ -64,7 +64,7 @@ yaml
 ```console
 git clone https://github.com/<your-name>/ArtDownloader.git
 cd ArtDownloader
-```console
+```
 
 Install dependencies in venv
 
