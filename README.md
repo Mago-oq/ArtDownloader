@@ -97,12 +97,12 @@ Images are saved in: You can decide
 
 ArtDownloader/downloads/pinterest/
 
-⚠ Disclaimer
+## ⚠ Disclaimer
 This tool is intended for personal backup and archival of your own saved content.
 Do not use it for scraping copyrighted content you do not own.
 Respect the terms of service of each platform.
 
-🗺 Roadmap
+## 🗺 Roadmap
 
  Unified combined_downloader.py launcher
 
