@@ -65,33 +65,32 @@ yaml
 git clone https://github.com/<your-name>/ArtDownloader.git
 cd ArtDownloader
 Install dependencies:
-
+bash
 ```bash
 pip install -r requirements.txt
 Download the correct Microsoft Edge WebDriver:
 https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/
-
-Place the msedgedriver.exe file into:
+bash
+Place the msedgedriver.exe file into: Drivers
 
 ```bash
 ArtDownloader/drivers/
 ▶ Usage
 Pinterest Scraper
 Open the script:
-
+bash
 ```bash
 python src/pinterest_download_pins.py
 Login to Pinterest manually
-
+bash
 Navigate to your Saved page or any board
 
 Press ENTER in the console
 
 Script automatically scrolls and downloads everything
 
-Images are saved in:
+Images are saved in: You can decide
 
-bash
 
 ArtDownloader/downloads/pinterest/
 ⚠ Disclaimer
