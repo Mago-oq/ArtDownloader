@@ -1,128 +1,124 @@
-🎨 Art Downloader Suite
+# 🎨 Art Downloader Suite  
+**Automated Pinterest & Pixiv image downloader (original quality, no official API)**  
 
-Automated Pinterest & Pixiv image downloader (original quality, no official API)
+A collection of Python tools designed to download and archive artwork from major platforms like **Pinterest** and **Pixiv** — even when official APIs are limited or unavailable.  
+The suite uses **Selenium automation**, **smart URL extraction**, and fallback techniques to retrieve **full-resolution images** safely and reliably.
 
-A collection of Python tools designed to download and archive artwork from major platforms like Pinterest and Pixiv — even when official APIs are limited or unavailable.
-This suite uses Selenium automation, smart URL extraction, and fallback techniques to retrieve full-resolution images safely and reliably.
+---
 
-🚀 Features
-✔ Pinterest Scraper
+## 🚀 Features
 
-Works without the Pinterest API
+### ✔ Pinterest Scraper
+- Works **without Pinterest API**
+- Uses Selenium to scroll and load all pins on your Saved page
+- Extracts `pinimg.com` direct URLs
+- Automatically converts preview images to `originals/`
+- Downloads **full-resolution** artwork
+- Supports large collections (10k+ images)
 
-Uses Selenium to scroll and load all pins from your Saved page
+### ✔ Pixiv Downloader
+- Downloads images from Pixiv using session cookies
+- Supports novels, images, multi-image posts
+- Saves in organized folders
 
-Extracts direct pinimg.com URLs
+### ✔ Combined Downloader *(coming soon)*
+- Unified interface for downloading from multiple sites
+- One CLI to rule them all
 
-Converts preview images to original quality
+---
 
-Downloads full-resolution artwork
+## 📦 Project Structure
 
-Supports large collections (10k+ images)
-
-✔ Pixiv Downloader
-
-Downloads images from Pixiv using session cookies
-
-Supports single images, multi-image posts, and novels
-
-Saves artwork in organized folders
-
-✔ Combined Downloader (coming soon)
-
-One unified interface for downloading from multiple sites
-
-One CLI to rule them all
-
-📦 Project Structure
 ArtDownloader/
 │
 ├── src/
-│   ├── pinterest_download_pins.py      # Pinterest scraper
-│   ├── pixiv_downloader.py             # Pixiv scraper
-│   └── combined_downloader.py          # (future) unified script
+│ ├── pinterest_download_pins.py # Pinterest scraper
+│ ├── pixiv_downloader.py # Pixiv scraper
+│ └── combined_downloader.py # (future) unified script
 │
-├── downloads/                          # Image output (ignored by git)
-├── drivers/                            # Browser drivers (ignored by git)
+├── downloads/ # Image output (ignored by git)
+├── drivers/ # Browser drivers (ignored by git)
 │
 ├── requirements.txt
 ├── .gitignore
 └── README.md
 
-🛠 Requirements
+yaml
 
-Python 3.10+
 
-Microsoft Edge browser
+---
 
-Matching msedgedriver.exe inside /drivers/
+## 🛠 Requirements
 
-Selenium installed (see below)
+- **Python 3.10+**
+- **Microsoft Edge browser**
+- Matching **msedgedriver.exe** inside `/drivers/`
+- Selenium installed (see below)
 
-📥 Installation
-1. Clone the repository
+---
+
+## 📥 Installation
+
+1. Clone the repository:
+
+```bash
 git clone https://github.com/<your-name>/ArtDownloader.git
 cd ArtDownloader
+Install dependencies:
 
-2. Install dependencies
+bash
+
 pip install -r requirements.txt
-
-3. Download the correct Microsoft Edge WebDriver
-
-Get it here:
-Microsoft Edge WebDriver
+Download the correct Microsoft Edge WebDriver:
+https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/
 
 Place the msedgedriver.exe file into:
 
-ArtDownloader/drivers/
+bash
 
+ArtDownloader/drivers/
 ▶ Usage
 Pinterest Scraper
+Open the script:
 
-Run the script:
+bash
 
 python src/pinterest_download_pins.py
-
-
-Then:
-
 Login to Pinterest manually
 
 Navigate to your Saved page or any board
 
 Press ENTER in the console
 
-The script will automatically scroll and download all images
+Script automatically scrolls and downloads everything
 
 Images are saved in:
 
+bash
+
 ArtDownloader/downloads/pinterest/
-
 ⚠ Disclaimer
-
-This tool is intended for personal backup and archival of your own content.
-Do not use it to scrape copyrighted content you do not own.
-Always respect platform terms of service.
+This tool is intended for personal backup and archival of your own saved content.
+Do not use it for scraping copyrighted content you do not own.
+Respect the terms of service of each platform.
 
 🗺 Roadmap
-
  Unified combined_downloader.py launcher
 
  GUI version (PyQt / Tkinter)
 
- Danbooru / ArtStation modules
+ Danbooru / Artstation modules
 
  Multithreaded downloader
 
  Auto-update mode (sync new pins only)
 
- Tag-based file sorting
+ Tag-based sorting
 
 🤝 Contributing
-
 Pull Requests are welcome.
-For major changes, please open an issue first to discuss the proposal.
+Please open an issue first to discuss major changes.
 
 ⭐ Support
+If you found this project useful, consider giving it a star ⭐ on GitHub — it helps visibility and motivates development!
 
-If you find this project useful, consider giving it a star ⭐ on GitHub — it helps visibility and motivates continued development!
