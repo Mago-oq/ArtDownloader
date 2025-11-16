@@ -562,7 +562,7 @@ class App(ttk.Frame):
         self.rowconfigure(6, weight=1)
 
         self.url_var = tk.StringVar()
-        self.profile_root_var = tk.StringVar(value=r"C:\Users\dsmag\AppData\Local\Microsoft\Edge\User Data")
+        self.profile_root_var = tk.StringVar(value=r"C:\Users\<username>\AppData\Local\Microsoft\Edge\User Data")
         self.profile_name_var = tk.StringVar(value="Default")
         self.out_var = tk.StringVar(value=DOWNLOAD_ROOT)
         self.headless_var = tk.BooleanVar(value=False)

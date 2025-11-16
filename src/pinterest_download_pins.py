@@ -14,7 +14,7 @@ from selenium.common.exceptions import StaleElementReferenceException
 
 # СЮДА вставь ссылку на страницу с ТВОИМИ пинами
 # пример: "https://www.pinterest.de/твой_ник/_saved/"
-START_URL = "https://de.pinterest.com/dsmago95/tactical/"
+START_URL = "https://www.pinterest.com/YOUR_USERNAME/_saved/"
 
 # сколько раз скроллить страницу (увеличь если пинов много)
 MAX_SCROLLS = 80
