@@ -66,23 +66,20 @@ git clone https://github.com/<your-name>/ArtDownloader.git
 cd ArtDownloader
 Install dependencies:
 
-bash
-
+```bash
 pip install -r requirements.txt
 Download the correct Microsoft Edge WebDriver:
 https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/
 
 Place the msedgedriver.exe file into:
 
-bash
-
+```bash
 ArtDownloader/drivers/
 ▶ Usage
 Pinterest Scraper
 Open the script:
 
-bash
-
+```bash
 python src/pinterest_download_pins.py
 Login to Pinterest manually
 
